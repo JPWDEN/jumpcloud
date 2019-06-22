@@ -35,7 +35,11 @@ func main() {
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
+	stopCall := <-stop
+	switch stopCall {
+	case syscall.SIGTERM:
+		
+	}
 
 	infoLog.Printf("Main service ending")
 }
