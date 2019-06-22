@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -79,7 +78,6 @@ func hashAndEncrypt(password string) string {
 	hash512 := sha512.New()
 	hash512.Write([]byte(password))
 	encoded := base64.StdEncoding.EncodeToString(hash512.Sum(nil))
-	fmt.Printf("Hashed and encoded password: %s\n", encoded)
 	return string(encoded)
 }
 
@@ -95,11 +93,9 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		//resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
 		return
 	}
-	path := req.URL.Path
-	pathArgs := strings.Split(strings.Trim(path, "/"), "/")
-	m, _ := url.ParseQuery(req.URL.RawQuery)
-	fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
-	fmt.Printf("json header: %s\n", req.Header.Get("Content-type"))
+	//pathArgs := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
+	//m, _ := url.ParseQuery(req.URL.RawQuery)
+	//fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 	var passwd types.HashData
 
 	//If JSON header exists, process for JSON.  If not, parse form data.
@@ -127,14 +123,13 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		svr.Head++
 		//Write out the ID to an http response after incrementing head position
 		if useJSON {
-			respond(resp, req, http.StatusOK, &types.HashData{ID: svr.Head})
+			respond(resp, req, http.StatusOK, &types.HashData{Password: passwd.Password, ID: svr.Head})
 		} else {
 			resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(svr.Head))))
 		}
 		hashedPW := hashAndEncrypt(passwd.Password)
 		svr.IDMap[svr.Head] = types.IDData{Password: hashedPW, FirstCall: time.Now()}
 		elapsed := time.Since(now)
-		fmt.Printf("Elapsed: %d\n", elapsed)
 		svr.Average = ((svr.Average + float64(elapsed.Nanoseconds())) / float64(svr.Head))
 		return
 	default:
@@ -157,10 +152,9 @@ func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request
 		//resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
 		return
 	}
-	path := req.URL.Path
-	pathArgs := strings.Split(strings.Trim(path, "/"), "/")
-	m, _ := url.ParseQuery(req.URL.RawQuery)
-	fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
+	pathArgs := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
+	//m, _ := url.ParseQuery(req.URL.RawQuery)
+	//fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 
 	switch req.Method {
 	case "GET":
@@ -196,11 +190,9 @@ func (svr *ServerType) GetAPIStats(resp http.ResponseWriter, req *http.Request) 
 		//resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
 		return
 	}
-	path := req.URL.Path
-	pathArgs := strings.Split(strings.Trim(path, "/"), "/")
-
-	m, _ := url.ParseQuery(req.URL.RawQuery)
-	fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
+	//pathArgs := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
+	//m, _ := url.ParseQuery(req.URL.RawQuery)
+	//fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 	switch req.Method {
 	case "GET":
 		stats := types.StatsData{Total: svr.Head, Average: svr.Average / 1000000.0}
@@ -223,6 +215,7 @@ func (svr *ServerType) Shutdown(resp http.ResponseWriter, req *http.Request) {
 		time.Sleep(time.Second * 5) //Sleep to allow services to complete
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		if err != nil {
+			fmt.Printf("Error\n")
 			resp.Write([]byte(fmt.Sprintf("Error shutting down: %v", err)))
 			//If we want to keep processing API calls in the event we cannot shutdown, uncomment below code
 			//svr.status.mux.Lock()
