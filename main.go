@@ -8,12 +8,15 @@ import (
 
 	"github.com/jumpcloud/logs"
 	"github.com/jumpcloud/service"
+	"github.com/jumpcloud/testclient"
 )
 
 func main() {
+	//Initialize logging system
 	infoLog, _, _, errorLog := logs.InitLogger(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 	infoLog.Printf("Starting main service")
 
+	//Set networking parameters
 	port := os.Getenv("PORT")
 	addr := os.Getenv("ADDRESS")
 	if port == "" || addr == "" {
@@ -21,6 +24,7 @@ func main() {
 		addr = "localhost"
 	}
 
+	//Instantiate server and multiplexer; register endpoints
 	svc := service.NewServer()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hash", svc.HashPassword)
@@ -33,9 +37,19 @@ func main() {
 		errorLog.Printf("Server error: %v", http.ListenAndServe(port, mux))
 	}()
 
+	//Run testclient
+	
+
+	//Block main thread from completing until the correct signal is received
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
+	stopCall := <-stop
+	switch stopCall {
+	case syscall.SIGTERM:
+		infoLog.Printf("API service shutting down gracefully")
+	case syscall.SIGINT:
+		infoLog.Printf("API service shutting down gracefully")
+	}
 
 	infoLog.Printf("Main service ending")
 }
