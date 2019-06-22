@@ -215,7 +215,6 @@ func (svr *ServerType) Shutdown(resp http.ResponseWriter, req *http.Request) {
 		time.Sleep(time.Second * 5) //Sleep to allow services to complete
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		if err != nil {
-			fmt.Printf("Error\n")
 			resp.Write([]byte(fmt.Sprintf("Error shutting down: %v", err)))
 			//If we want to keep processing API calls in the event we cannot shutdown, uncomment below code
 			//svr.status.mux.Lock()
