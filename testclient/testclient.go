@@ -21,12 +21,12 @@ func runHashPassword(useJSON bool) {
 		payload := types.HashData{Password: "angryMonkey"}
 		byteMap, err := json.Marshal(payload)
 		if err != nil {
-			//log.Errorf("Error: %v", err)
+			fmt.Printf("HashPassword Error: %v", err)
 			return
 		}
 		resp, err := http.Post(route, "application/json", bytes.NewBuffer(byteMap))
 		if err != nil {
-			//log.Errorf("Error: %v", err)
+			fmt.Printf("HashPassword Error: %v", err)
 			return
 		}
 		var result types.HashData
@@ -37,7 +37,7 @@ func runHashPassword(useJSON bool) {
 		payload.Set("password", "angryMonkey")
 		resp, err := http.PostForm(route, payload)
 		if err != nil {
-			//log.Errorf("Error: %v", err)
+			fmt.Printf("HashPassword Error: %v", err)
 			return
 		}
 		defer resp.Body.Close()
@@ -52,10 +52,12 @@ func runCheckPassword(id int) {
 	route := fmt.Sprintf("http://localhost:8080/hash/%d", id)
 	req, err := http.NewRequest("GET", route, nil)
 	if err != nil {
+		fmt.Printf("CheckPassword Error: %v", err)
 		return
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Printf("CheckPassword Error: %v", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -69,10 +71,12 @@ func runGetAPIStats() {
 	route := "http://localhost:8080/stats"
 	req, err := http.NewRequest("GET", route, nil)
 	if err != nil {
+		fmt.Printf("GetAPIStats Error: %v", err)
 		return
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Printf("GetAPIStats Error: %v", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -86,10 +90,12 @@ func runShutdown() {
 	route := "http://localhost:8080/shutdown"
 	req, err := http.NewRequest("GET", route, nil)
 	if err != nil {
+		fmt.Printf("Shutdown Error: %v", err)
 		return
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		fmt.Printf("Shutdown Error: %v", err)
 		return
 	}
 	defer resp.Body.Close()
@@ -97,7 +103,7 @@ func runShutdown() {
 	fmt.Printf("Shutdown result: %v\n", string(body))
 }
 
-//RunClient does some simple tests on the API calls for accuracy with test data
+//RunClient does some simple tests on the API calls for validation on test data
 func RunClient() {
 	doneCH := make(chan bool)
 	useJSON := false
