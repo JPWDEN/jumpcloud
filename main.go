@@ -43,6 +43,7 @@ func main() {
 
 	//Run testclient
 	if test {
+		infoLog.Printf("Running test client")
 		testclient.RunClient()
 	}
 
