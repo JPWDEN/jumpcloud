@@ -8,6 +8,7 @@ import (
 
 	"github.com/jumpcloud/logs"
 	"github.com/jumpcloud/service"
+	"github.com/jumpcloud/testclient"
 )
 
 func main() {
@@ -35,6 +36,9 @@ func main() {
 		infoLog.Printf("Starting API on %s", addr)
 		errorLog.Printf("Server error: %v", http.ListenAndServe(port, mux))
 	}()
+
+	//Run testclient
+	
 
 	//Block main thread from completing until the correct signal is received
 	stop := make(chan os.Signal, 1)

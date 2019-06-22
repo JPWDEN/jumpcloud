@@ -26,8 +26,8 @@ type Server interface {
 }
 
 type safeShutdown struct {
+	mux      sync.RWMutex
 	shutdown bool
-	mux      sync.Mutex
 }
 
 //ServerType holds the member variables for the server.
@@ -87,12 +87,14 @@ func hashAndEncrypt(password string) string {
 //Per instructions, these endpoints do not process JSON requests; this function includes a POC for also processing JSON requests
 func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request) {
 	now := time.Now() //Duration is customer experience.  Prioritize this metric over checking shutdown
-	svr.status.mux.Lock()
-	if svr.status.shutdown {
-		resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
+	svr.status.mux.RLock()
+	stop := svr.status.shutdown
+	svr.status.mux.RUnlock()
+	if stop {
+		//Uncomment to provide a shutdown response
+		//resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
 		return
 	}
-	svr.status.mux.Unlock()
 	path := req.URL.Path
 	pathArgs := strings.Split(strings.Trim(path, "/"), "/")
 	m, _ := url.ParseQuery(req.URL.RawQuery)
@@ -115,7 +117,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		if ok {
 			passwd.Password = value[0]
 		} else {
-			respondHTTPErr(resp, req, http.StatusBadRequest)
+			resp.Write([]byte(fmt.Sprintf("Bad request:  No password\n")))
 			return
 		}
 	}
@@ -136,25 +138,32 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		svr.Average = ((svr.Average + float64(elapsed.Nanoseconds())) / float64(svr.Head))
 		return
 	default:
-		respondHTTPErr(resp, req, http.StatusBadRequest)
+		if useJSON {
+			respondHTTPErr(resp, req, http.StatusBadRequest)
+		} else {
+			resp.Write([]byte(fmt.Sprintf("Bad request: No POST\n")))
+		}
 		return
 	}
 }
 
 //CheckPassword makes sure the 5-second wait has expired for a given ID.  If so, it returns the password hash
 func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request) {
-	if svr.status.shutdown {
-		resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
+	svr.status.mux.RLock()
+	stop := svr.status.shutdown
+	svr.status.mux.RUnlock()
+	if stop {
+		//Uncomment to provide a shutdown response
+		//resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
 		return
 	}
 	path := req.URL.Path
 	pathArgs := strings.Split(strings.Trim(path, "/"), "/")
-
 	m, _ := url.ParseQuery(req.URL.RawQuery)
 	fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
+
 	switch req.Method {
 	case "GET":
-		fmt.Println("In GET")
 		id, err := strconv.Atoi(pathArgs[1])
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
@@ -165,10 +174,8 @@ func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request
 			now := time.Now()
 			fiveSecAgo := now.Add(time.Second * -5)
 			if value.FirstCall.After(fiveSecAgo) {
-				fmt.Printf("ID: %s\n", strconv.Itoa(id))
 				resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(id))))
 			} else {
-				fmt.Printf("ID: %s\n", value.Password)
 				resp.Write([]byte(fmt.Sprintf("%s\n", value.Password)))
 			}
 		}
@@ -181,8 +188,12 @@ func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request
 
 //GetAPIStats returns a JSON object with total number of requests and average response time statistics
 func (svr *ServerType) GetAPIStats(resp http.ResponseWriter, req *http.Request) {
-	if svr.status.shutdown {
-		resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
+	svr.status.mux.RLock()
+	stop := svr.status.shutdown
+	svr.status.mux.RUnlock()
+	if stop {
+		//Uncomment to provide a shutdown response
+		//resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
 		return
 	}
 	path := req.URL.Path
