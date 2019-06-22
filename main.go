@@ -23,6 +23,10 @@ func main() {
 		port = ":8080"
 		addr = "localhost"
 	}
+	test := false
+	if os.Getenv("TEST") == "true" {
+		test = true
+	}
 
 	//Instantiate server and multiplexer; register endpoints
 	svc := service.NewServer()
@@ -38,7 +42,9 @@ func main() {
 	}()
 
 	//Run testclient
-	
+	if test {
+		testclient.RunClient()
+	}
 
 	//Block main thread from completing until the correct signal is received
 	stop := make(chan os.Signal, 1)
