@@ -16,7 +16,8 @@ type HashData struct {
 	ID       int    `json:"id"`
 }
 
-//StatsData is a JSON object for responses to provide data on total API calls and average response times
+//StatsData is a JSON object to provide data on total number of calls and average response times
+//Keep Average as a flot to maintain precision.  GetAPIStats will return Average * 10e-6
 type StatsData struct {
 	Total   int     `json:"total"`
 	Average float64 `json:"average"`

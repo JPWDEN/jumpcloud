@@ -38,7 +38,7 @@ type ServerType struct {
 	IDMap map[int]types.IDData
 	//Average is a running average (in ms) of the time required to process all incoming hash requests
 	Average float64
-	//status is not exported, and holds the shutdown status of the service, and a lock for that status
+	//status (unexported) holds the shutdown status of the service, and a lock for that status
 	status safeShutdown
 }
 
@@ -84,6 +84,7 @@ func hashAndEncrypt(password string) string {
 }
 
 //HashPassword fulfills implementation for the /hash and /hash/ endpoints
+//Per instructions, these endpoints do not process JSON requests; this function includes a POC for also processing JSON requests
 func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request) {
 	now := time.Now() //Duration is customer experience.  Prioritize this metric over checking shutdown
 	svr.status.mux.Lock()
@@ -98,6 +99,8 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 	fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 	fmt.Printf("json header: %s\n", req.Header.Get("Content-type"))
 	var passwd types.HashData
+
+	//If JSON header exists, process for JSON.  If not, parse form data.
 	useJSON := false
 	if req.Header.Get("Content-type") == "application/json" {
 		err := decodeBody(req, &passwd)
@@ -120,10 +123,11 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 	switch req.Method {
 	case "POST":
 		svr.Head++
+		//Write out the ID to an http response after incrementing head position
 		if useJSON {
 			respond(resp, req, http.StatusOK, &types.HashData{ID: svr.Head})
 		} else {
-			resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(svr.Head)))) //Write out the ID immediately to an http response
+			resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(svr.Head))))
 		}
 		hashedPW := hashAndEncrypt(passwd.Password)
 		svr.IDMap[svr.Head] = types.IDData{Password: hashedPW, FirstCall: time.Now()}
@@ -175,6 +179,7 @@ func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request
 	}
 }
 
+//GetAPIStats returns a JSON object with total number of requests and average response time statistics
 func (svr *ServerType) GetAPIStats(resp http.ResponseWriter, req *http.Request) {
 	if svr.status.shutdown {
 		resp.Write([]byte(fmt.Sprintf("Shutting service down\n")))
@@ -196,6 +201,7 @@ func (svr *ServerType) GetAPIStats(resp http.ResponseWriter, req *http.Request) 
 	}
 }
 
+//Shutdown blocks API calls from use and initiates a graceful shutdown of the API service
 func (svr *ServerType) Shutdown(resp http.ResponseWriter, req *http.Request) {
 	svr.status.mux.Lock()
 	svr.status.shutdown = true
