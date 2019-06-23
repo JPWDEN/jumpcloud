@@ -24,7 +24,7 @@ Response:
 - `/shutdown` initiates a graceful shutdown of the server.  This includes blocking the processing of any subsequent calls to the other endpoints, and a 5-second grace period for all endpoints to finish responding.<br>
 Request: `curl localhost:8080/shutdown`<br>
 Response:
-`Shutting service down`
+`Shutting service down`<br><br>
 
 # Additional packages
 Two additional packages were written to support the processing that takes place in the server
