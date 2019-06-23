@@ -35,7 +35,7 @@ The logs package is a very simple wrapper around the standard log package.  It a
 ## Testclient
 The testclient package serves as a simple test framework.  Because this project needed to be safe for multiple concurrent calls and provide time-variant data, a test framework of this type felt more useful for some basic “pen testing”.  Unit tests could still be written using Go’s built in test framework, but it may prove to provide a lower ROI for a small project of this kind.
 
-Example curl commands can also be found in testclient
+Example curl commands can also be found in testclient<br><br>
 
 # Using this repo
 To use, first clone the repo (`git clone git@github.com:JPWDEN/jumpcloud`) to a location that your $GOPATH is familiar with.
@@ -48,9 +48,13 @@ The application will run and begin listening for HTTP requests on localhost:8080
 
 Open a new terminal window and issue curl commands to localhost:8080 to use the API.  Executing the curl command ` curl -v --data "password=angryMonkey" -X POST localhost:8080/hash ` as listed above should provide a response similar to `1`.  Log output will be available in the window the application is running from.
 
-##Docker
+## Docker
 Jumpcloud has a minimal Docker configuration and can be run in a container.
 `docker-compose up` will build and run the container.
 `docker-compose up -d` will run the container in the background.
 
 Once the container is up and running, the application can be used exactly the same as the stand-alone method above, pointing to localhost:8080.
+
+
+# Appreciation
+Thank you for your time reviewing this repo.  I'll be looking forward to hearing feedback.
