@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -32,16 +33,24 @@ type ServerType struct {
 	Head int
 	//IDMap holds time access and password data for each ID
 	IDMap map[int]types.IDData
-	//Average is a running average (in ms) of the time required to process all incoming hash requests
-	Average float64
+	//Average is a running average (in us) of the time required to process all incoming hash requests
+	Average int64
 	//shutdown (unexported) holds the shutdown status of the service
 	shutdown bool
+	//Below logs provide info- and error-specific logging within the service
+	infoLog  *log.Logger
+	errorLog *log.Logger
 }
 
 //NewServer is a constructor that initializes a server object of type ServerType
-func NewServer() *ServerType {
+func NewServer(infoLog *log.Logger, errorLog *log.Logger) *ServerType {
 	newMap := make(map[int]types.IDData)
-	return &ServerType{IDMap: newMap, shutdown: false}
+	return &ServerType{
+		IDMap:    newMap,
+		shutdown: false,
+		infoLog:  infoLog,
+		errorLog: errorLog,
+	}
 }
 
 func encodeBody(resp http.ResponseWriter, req *http.Request, data interface{}) error {
@@ -79,7 +88,7 @@ func hashAndEncrypt(password string) string {
 }
 
 //HashPassword fulfills implementation for the /hash and /hash/ endpoints
-//Per instructions, these endpoints do not process JSON requests; this function includes a POC for also processing JSON requests
+//Per instructions, these endpoints do not process JSON requests; this function includes POC for processing JSON requests also
 func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request) {
 	now := time.Now() //Duration is customer experience.  Prioritize this metric over checking shutdown
 	svr.mux.RLock()
@@ -92,15 +101,16 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 	}
 	//pathArgs := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
 	//m, _ := url.ParseQuery(req.URL.RawQuery)
-	//fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
+	//svr.infoLog.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 	var passwd types.HashData
 
-	//If JSON header exists, process for JSON.  If not, parse form data.
+	//If JSON header exists, process as JSON.  If not, parse form data.
 	useJSON := false
 	if req.Header.Get("Content-type") == "application/json" {
 		err := decodeBody(req, &passwd)
 		if err != nil {
 			respondErr(resp, req, http.StatusBadRequest, " Failed to decode body: ", err)
+			svr.errorLog.Printf("Error in HashPassword: %v", err)
 			return
 		}
 		useJSON = true
@@ -111,6 +121,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 			passwd.Password = value[0]
 		} else {
 			resp.Write([]byte(fmt.Sprintf("Bad request:  No password\n")))
+			svr.errorLog.Printf("Error in HashPassword: No password")
 			return
 		}
 	}
@@ -129,7 +140,8 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		hashedPW := hashAndEncrypt(passwd.Password)
 		svr.IDMap[svr.Head] = types.IDData{Password: hashedPW, FirstCall: time.Now()}
 		elapsed := time.Since(now)
-		svr.Average = ((svr.Average + float64(elapsed.Nanoseconds())) / float64(svr.Head))
+		svr.Average = ((svr.Average + elapsed.Nanoseconds()) / int64(svr.Head))
+		svr.infoLog.Printf("Response return for HashPassword: %v", types.HashData{Password: passwd.Password, ID: svr.Head})
 		return
 	default:
 		if useJSON {
@@ -137,6 +149,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		} else {
 			resp.Write([]byte(fmt.Sprintf("Bad request: No POST\n")))
 		}
+		svr.errorLog.Printf("Error in HashPassword: %v", types.HashData{Password: passwd.Password, ID: svr.Head})
 		return
 	}
 }
@@ -153,30 +166,35 @@ func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request
 	}
 	pathArgs := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
 	//m, _ := url.ParseQuery(req.URL.RawQuery)
-	//fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
+	//svr.infoLog.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 
 	switch req.Method {
 	case "GET":
 		id, err := strconv.Atoi(pathArgs[1])
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			resp.Write([]byte(fmt.Sprintf("Error in request: %v\n", err)))
+			svr.errorLog.Printf("Error in request: %v\n", err)
 			return
 		}
 		svr.mux.RLock()
 		value, ok := svr.IDMap[id]
 		svr.mux.RUnlock()
+		var respString string
 		if ok {
 			now := time.Now()
 			fiveSecAgo := now.Add(time.Second * -5)
 			if value.FirstCall.After(fiveSecAgo) {
-				resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(id))))
+				respString = fmt.Sprintf("%s\n", strconv.Itoa(id))
 			} else {
-				resp.Write([]byte(fmt.Sprintf("%s\n", value.Password)))
+				respString = fmt.Sprintf("%s\n", value.Password)
 			}
 		}
+		resp.Write([]byte(respString))
+		svr.infoLog.Printf("Response return for CheckPassword: %s", respString)
 		return
 	default:
 		respondHTTPErr(resp, req, http.StatusBadRequest)
+		svr.errorLog.Printf("Error in CheckPassword: No GET method found in call")
 		return
 	}
 }
@@ -193,16 +211,18 @@ func (svr *ServerType) GetAPIStats(resp http.ResponseWriter, req *http.Request) 
 	}
 	//pathArgs := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
 	//m, _ := url.ParseQuery(req.URL.RawQuery)
-	//fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
+	//svr.infoLog.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 	switch req.Method {
 	case "GET":
 		svr.mux.RLock()
-		stats := types.StatsData{Total: svr.Head, Average: svr.Average / 1000000.0}
+		stats := types.StatsData{Total: svr.Head, Average: svr.Average / 1000}
 		svr.mux.RUnlock()
 		respond(resp, req, http.StatusOK, &stats)
+		svr.infoLog.Printf("Response return for GetAPIStats: %+v", stats)
 		return
 	default:
 		respondHTTPErr(resp, req, http.StatusBadRequest)
+		svr.errorLog.Printf("Error in GetAPIStats: No GET method found in call")
 		return
 	}
 }
@@ -219,6 +239,7 @@ func (svr *ServerType) Shutdown(resp http.ResponseWriter, req *http.Request) {
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		if err != nil {
 			resp.Write([]byte(fmt.Sprintf("Error shutting down: %v", err)))
+			svr.errorLog.Printf("Error in Shutdown: %v", err)
 			//If we want to keep processing API calls in the event we cannot shutdown, uncomment below code
 			//svr.status.mux.Lock()
 			//svr.status.shutdown = false
