@@ -16,7 +16,7 @@ Response with less than 5 seconds elapsed time since /hash was called:
 Response with 5 seconds or more of elapsed time since /has was called:
 `ZEHhWB65gUlzdVwtDQArEyx+KVLzp/aTaRaPlBzYRIFj6vjFdqEb0Q5B8zVKCZ0vKbZPZklJz0Fd7su2A+gf7Q==`
 
-- `/stats` takes no parameters and responds in JSON format with an object containing the total number of *successful* hash requests and the average response time of those requests.  Average is measured in microseconds.<br>
+- `/stats` takes no parameters and responds in JSON format with an object containing the total number of *successful* hash requests and the average response time of those requests.  Internally, Average is stored in nanooseconds to maintain precision.  This endpoint will return the Average after converting to milliseconds to reflect the requested units.<br>
 Request:  `curl -v localhost:8080/stats`<br>
 Response:
 `{"total":2,"average":73}`
