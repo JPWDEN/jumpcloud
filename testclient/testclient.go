@@ -20,6 +20,7 @@ type ClientType struct {
 	errorLog     *log.Logger
 }
 
+//NewClient is the constructor for the testclient object
 func NewClient(passwords []string, infoLog *log.Logger, errorLog *log.Logger) *ClientType {
 	return &ClientType{
 		passwordList: passwords,
@@ -30,7 +31,7 @@ func NewClient(passwords []string, infoLog *log.Logger, errorLog *log.Logger) *C
 
 //Run the HashPassword service function with test data
 //Form:  curl -v --data "password=angryMonkey" -X POST localhost:8080/hash
-//JSON:  curl --data '{"password":"angryMonkey"}' -H "Content-type: application/json" localhost:8080/hash
+//JSON:  curl -v --data '{"password":"angryMonkey"}' -H "Content-type: application/json" localhost:8080/hash
 func (client *ClientType) runHashPassword(useJSON bool) {
 	route := "http://localhost:8080/hash"
 	if useJSON {
