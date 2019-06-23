@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -12,10 +13,25 @@ import (
 	"github.com/jumpcloud/types"
 )
 
+//ClientType object provides user data for testing
+type ClientType struct {
+	passwordList []string
+	infoLog      *log.Logger
+	errorLog     *log.Logger
+}
+
+func NewClient(passwords []string, infoLog *log.Logger, errorLog *log.Logger) *ClientType {
+	return &ClientType{
+		passwordList: passwords,
+		infoLog:      infoLog,
+		errorLog:     errorLog,
+	}
+}
+
 //Run the HashPassword service function with test data
 //Form:  curl -v --data "password=angryMonkey" -X POST localhost:8080/hash
 //JSON:  curl -v --data '{"password":"angryMonkey"}' -X POST localhost:8080/hash
-func runHashPassword(useJSON bool) {
+func (client *ClientType) runHashPassword(useJSON bool) {
 	route := "http://localhost:8080/hash"
 	if useJSON {
 		payload := types.HashData{Password: "angryMonkey"}
@@ -48,7 +64,7 @@ func runHashPassword(useJSON bool) {
 
 //Run the CheckPassword service function with test data
 //curl -v localhost:8080/hash/{id}
-func runCheckPassword(id int) {
+func (client *ClientType) runCheckPassword(id int) {
 	route := fmt.Sprintf("http://localhost:8080/hash/%d", id)
 	req, err := http.NewRequest("GET", route, nil)
 	if err != nil {
@@ -67,7 +83,7 @@ func runCheckPassword(id int) {
 
 //Run the GetAPIStats service function to check test data in previous calls
 //curl -v localhost:8080/stats
-func runGetAPIStats() {
+func (client *ClientType) runGetAPIStats() {
 	route := "http://localhost:8080/stats"
 	req, err := http.NewRequest("GET", route, nil)
 	if err != nil {
@@ -86,7 +102,7 @@ func runGetAPIStats() {
 }
 
 //Run the Shutdown service function to test its affect on the service and other calls
-func runShutdown() {
+func (client *ClientType) runShutdown() {
 	route := "http://localhost:8080/shutdown"
 	req, err := http.NewRequest("GET", route, nil)
 	if err != nil {
@@ -104,39 +120,39 @@ func runShutdown() {
 }
 
 //RunClient does some simple tests on the API calls for validation on test data
-func RunClient() {
+func (client *ClientType) RunClient() {
 	doneCH := make(chan bool)
 	useJSON := false
 	go func() {
-		runHashPassword(useJSON) //1 of 6
-		runHashPassword(useJSON) //2 of 6
-		runCheckPassword(1)
+		client.runHashPassword(useJSON) //1 of 6
+		client.runHashPassword(useJSON) //2 of 6
+		client.runCheckPassword(1)
 		time.Sleep(time.Second * 5)
-		runHashPassword(useJSON) //3 of 6
-		runCheckPassword(1)
-		runCheckPassword(2)
-		runCheckPassword(3)
+		client.runHashPassword(useJSON) //3 of 6
+		client.runCheckPassword(1)
+		client.runCheckPassword(2)
+		client.runCheckPassword(3)
 	}()
 	go func() {
-		runHashPassword(useJSON) //4 of 6
-		runCheckPassword(1)
-		runHashPassword(useJSON) //5 of 6
-		runHashPassword(useJSON) // 6 of 6
+		client.runHashPassword(useJSON) //4 of 6
+		client.runCheckPassword(1)
+		client.runHashPassword(useJSON) //5 of 6
+		client.runHashPassword(useJSON) // 6 of 6
 		time.Sleep(time.Second * 5)
-		runCheckPassword(4)
-		runCheckPassword(5)
-		runCheckPassword(6)
+		client.runCheckPassword(4)
+		client.runCheckPassword(5)
+		client.runCheckPassword(6)
 
 		doneCH <- true
 	}()
 
 	<-doneCH
 
-	runGetAPIStats()
-	runShutdown()
+	client.runGetAPIStats()
+	client.runShutdown()
 
 	//Below calls should not produce any meaningful output
-	runHashPassword(useJSON)
-	runCheckPassword(2)
-	runGetAPIStats()
+	client.runHashPassword(useJSON)
+	client.runCheckPassword(2)
+	client.runGetAPIStats()
 }

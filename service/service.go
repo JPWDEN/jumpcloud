@@ -139,6 +139,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		svr.IDMap[svr.Head] = types.IDData{Password: hashedPW, FirstCall: time.Now()}
 		elapsed := time.Since(now)
 		svr.Average = ((svr.Average + float64(elapsed.Nanoseconds())) / float64(svr.Head))
+		svr.infoLog.Printf("Response return for HashPassword: %v", types.HashData{Password: passwd.Password, ID: svr.Head})
 		return
 	default:
 		if useJSON {
@@ -146,6 +147,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		} else {
 			resp.Write([]byte(fmt.Sprintf("Bad request: No POST\n")))
 		}
+		svr.errorLog.Printf("Error in HashPassword: %v", types.HashData{Password: passwd.Password, ID: svr.Head})
 		return
 	}
 }
@@ -169,23 +171,28 @@ func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request
 		id, err := strconv.Atoi(pathArgs[1])
 		if err != nil {
 			svr.errorLog.Printf("Error in request: %v\n", err)
+			resp.Write([]byte(fmt.Sprintf("Error in request: %v\n", err)))
 			return
 		}
 		svr.mux.RLock()
 		value, ok := svr.IDMap[id]
 		svr.mux.RUnlock()
+		var respString string
 		if ok {
 			now := time.Now()
 			fiveSecAgo := now.Add(time.Second * -5)
 			if value.FirstCall.After(fiveSecAgo) {
-				resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(id))))
+				respString = fmt.Sprintf("%s\n", strconv.Itoa(id))
 			} else {
-				resp.Write([]byte(fmt.Sprintf("%s\n", value.Password)))
+				respString = fmt.Sprintf("%s\n", value.Password)
 			}
 		}
+		resp.Write([]byte(respString))
+		svr.infoLog.Printf("Response return for CheckPassword: %s", respString)
 		return
 	default:
 		respondHTTPErr(resp, req, http.StatusBadRequest)
+		svr.errorLog.Printf("Error in CheckPassword: No GET method found in call")
 		return
 	}
 }
@@ -209,9 +216,11 @@ func (svr *ServerType) GetAPIStats(resp http.ResponseWriter, req *http.Request) 
 		stats := types.StatsData{Total: svr.Head, Average: svr.Average / 1000000.0}
 		svr.mux.RUnlock()
 		respond(resp, req, http.StatusOK, &stats)
+		svr.infoLog.Printf("Response return for GetAPIStats: %+v", stats)
 		return
 	default:
 		respondHTTPErr(resp, req, http.StatusBadRequest)
+		svr.errorLog.Printf("Error in GetAPIStats: No GET method found in call")
 		return
 	}
 }

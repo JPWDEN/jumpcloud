@@ -29,7 +29,7 @@ func main() {
 	}
 
 	//Instantiate server and multiplexer; register endpoints
-	svc := service.NewServer()
+	svc := service.NewServer(infoLog, errorLog)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hash", svc.HashPassword)
 	mux.HandleFunc("/hash/", svc.CheckPassword)
@@ -43,8 +43,9 @@ func main() {
 
 	//Run testclient
 	if test {
+		client := testclient.NewClient([]string{"angryMonkey"}, infoLog, errorLog)
 		infoLog.Printf("Running test client")
-		testclient.RunClient()
+		client.RunClient()
 	}
 
 	//Block main thread from completing until the correct signal is received
