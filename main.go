@@ -16,7 +16,7 @@ func main() {
 	infoLog, _, _, errorLog := logs.InitLogger(os.Stdout, os.Stdout, os.Stdout, os.Stderr)
 	infoLog.Printf("Starting main service")
 
-	//Set networking parameters
+	//Set environment variables
 	port := os.Getenv("PORT")
 	addr := os.Getenv("ADDRESS")
 	if port == "" || addr == "" {
@@ -28,7 +28,7 @@ func main() {
 		test = true
 	}
 
-	//Instantiate server and multiplexer; register endpoints
+	//Instantiate server and multiplexer, register endpoints, and start listening
 	svc := service.NewServer(infoLog, errorLog)
 	mux := http.NewServeMux()
 	mux.HandleFunc("/hash", svc.HashPassword)

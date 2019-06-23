@@ -88,7 +88,7 @@ func hashAndEncrypt(password string) string {
 }
 
 //HashPassword fulfills implementation for the /hash and /hash/ endpoints
-//Per instructions, these endpoints do not process JSON requests; this function includes a POC for also processing JSON requests
+//Per instructions, these endpoints do not process JSON requests; this function includes POC for processing JSON requests also
 func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request) {
 	now := time.Now() //Duration is customer experience.  Prioritize this metric over checking shutdown
 	svr.mux.RLock()
@@ -104,12 +104,13 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 	//svr.infoLog.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 	var passwd types.HashData
 
-	//If JSON header exists, process for JSON.  If not, parse form data.
+	//If JSON header exists, process as JSON.  If not, parse form data.
 	useJSON := false
 	if req.Header.Get("Content-type") == "application/json" {
 		err := decodeBody(req, &passwd)
 		if err != nil {
 			respondErr(resp, req, http.StatusBadRequest, " Failed to decode body: ", err)
+			svr.errorLog.Printf("Error in HashPassword: %v", err)
 			return
 		}
 		useJSON = true
@@ -120,6 +121,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 			passwd.Password = value[0]
 		} else {
 			resp.Write([]byte(fmt.Sprintf("Bad request:  No password\n")))
+			svr.errorLog.Printf("Error in HashPassword: No password")
 			return
 		}
 	}
@@ -170,8 +172,8 @@ func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request
 	case "GET":
 		id, err := strconv.Atoi(pathArgs[1])
 		if err != nil {
-			svr.errorLog.Printf("Error in request: %v\n", err)
 			resp.Write([]byte(fmt.Sprintf("Error in request: %v\n", err)))
+			svr.errorLog.Printf("Error in request: %v\n", err)
 			return
 		}
 		svr.mux.RLock()
@@ -237,6 +239,7 @@ func (svr *ServerType) Shutdown(resp http.ResponseWriter, req *http.Request) {
 		err := syscall.Kill(syscall.Getpid(), syscall.SIGINT)
 		if err != nil {
 			resp.Write([]byte(fmt.Sprintf("Error shutting down: %v", err)))
+			svr.errorLog.Printf("Error in Shutdown: %v", err)
 			//If we want to keep processing API calls in the event we cannot shutdown, uncomment below code
 			//svr.status.mux.Lock()
 			//svr.status.shutdown = false

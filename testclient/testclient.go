@@ -37,28 +37,28 @@ func (client *ClientType) runHashPassword(useJSON bool) {
 		payload := types.HashData{Password: "angryMonkey"}
 		byteMap, err := json.Marshal(payload)
 		if err != nil {
-			fmt.Printf("HashPassword Error: %v", err)
+			client.errorLog.Printf("HashPassword Error: %v", err)
 			return
 		}
 		resp, err := http.Post(route, "application/json", bytes.NewBuffer(byteMap))
 		if err != nil {
-			fmt.Printf("HashPassword Error: %v", err)
+			client.errorLog.Printf("HashPassword Error: %v", err)
 			return
 		}
 		var result types.HashData
 		json.NewDecoder(resp.Body).Decode(&result)
-		fmt.Printf("HashPassword result: %+v\n", result)
+		client.infoLog.Printf("HashPassword result: %+v\n", result)
 	} else {
 		payload := url.Values{}
 		payload.Set("password", "angryMonkey")
 		resp, err := http.PostForm(route, payload)
 		if err != nil {
-			fmt.Printf("HashPassword Error: %v", err)
+			client.errorLog.Printf("HashPassword Error: %v", err)
 			return
 		}
 		defer resp.Body.Close()
 		body, _ := ioutil.ReadAll(resp.Body)
-		fmt.Printf("HashPassword result: %+v\n", string(body))
+		client.infoLog.Printf("HashPassword result: %+v\n", string(body))
 	}
 }
 
@@ -68,17 +68,17 @@ func (client *ClientType) runCheckPassword(id int) {
 	route := fmt.Sprintf("http://localhost:8080/hash/%d", id)
 	req, err := http.NewRequest("GET", route, nil)
 	if err != nil {
-		fmt.Printf("CheckPassword Error: %v", err)
+		client.errorLog.Printf("CheckPassword Error: %v", err)
 		return
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Printf("CheckPassword Error: %v", err)
+		client.errorLog.Printf("CheckPassword Error: %v", err)
 		return
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Printf("CheckPassword result: %v\n", string(body))
+	client.infoLog.Printf("CheckPassword result: %v\n", string(body))
 }
 
 //Run the GetAPIStats service function to check test data in previous calls
@@ -87,18 +87,18 @@ func (client *ClientType) runGetAPIStats() {
 	route := "http://localhost:8080/stats"
 	req, err := http.NewRequest("GET", route, nil)
 	if err != nil {
-		fmt.Printf("GetAPIStats Error: %v", err)
+		client.errorLog.Printf("GetAPIStats Error: %v", err)
 		return
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Printf("GetAPIStats Error: %v", err)
+		client.errorLog.Printf("GetAPIStats Error: %v", err)
 		return
 	}
 	defer resp.Body.Close()
 	var result types.StatsData
 	json.NewDecoder(resp.Body).Decode(&result)
-	fmt.Printf("GetAPIStats result: %+v\n", result)
+	client.infoLog.Printf("GetAPIStats result: %+v\n", result)
 }
 
 //Run the Shutdown service function to test its affect on the service and other calls
@@ -106,17 +106,17 @@ func (client *ClientType) runShutdown() {
 	route := "http://localhost:8080/shutdown"
 	req, err := http.NewRequest("GET", route, nil)
 	if err != nil {
-		fmt.Printf("Shutdown Error: %v", err)
+		client.errorLog.Printf("Shutdown Error: %v", err)
 		return
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		fmt.Printf("Shutdown Error: %v", err)
+		client.errorLog.Printf("Shutdown Error: %v", err)
 		return
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Printf("Shutdown result: %v\n", string(body))
+	client.infoLog.Printf("Shutdown result: %v\n", string(body))
 }
 
 //RunClient does some simple tests on the API calls for validation on test data
