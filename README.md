@@ -4,7 +4,7 @@ The jumpcloud repository is a simple API server over HTTP that provides SHA512 p
 Form request: `curl -v --data "password=angryMonkey" -X POST localhost:8080/hash` <br>
 Form Response:
 `1`<br>
-JSON request: `curl --data '{"password":"angryMonkey"}' -H "Content-type: application/json" localhost:8080/hash`<br>
+JSON request: `curl -v --data '{"password":"angryMonkey"}' -H "Content-type: application/json" localhost:8080/hash`<br>
 JSON response:
 `{"password":"angryMonkey","id":1}`
 
@@ -17,12 +17,12 @@ Response with 5 seconds or more of elapsed time since /has was called:
 `ZEHhWB65gUlzdVwtDQArEyx+KVLzp/aTaRaPlBzYRIFj6vjFdqEb0Q5B8zVKCZ0vKbZPZklJz0Fd7su2A+gf7Q==`
 
 - `/stats` takes no parameters and responds in JSON format with an object containing the total number of *successful* hash requests and the average response time of those requests.  Average is measured in microseconds.<br>
-Request:  `curl localhost:8080/stats`<br>
+Request:  `curl -v localhost:8080/stats`<br>
 Response:
 `{"total":2,"average":73}`
 
 - `/shutdown` initiates a graceful shutdown of the server.  This includes blocking the processing of any subsequent calls to the other endpoints, and a 5-second grace period for all endpoints to finish responding.<br>
-Request: `curl localhost:8080/shutdown`<br>
+Request: `curl -v localhost:8080/shutdown`<br>
 Response:
 `Shutting service down`<br><br>
 
