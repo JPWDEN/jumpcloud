@@ -43,9 +43,13 @@ func main() {
 
 	//Run testclient
 	if test {
-		client := testclient.NewClient([]string{"angryMonkey"}, infoLog, errorLog)
-		infoLog.Printf("Running test client")
-		client.RunClient()
+		client, err := testclient.NewClient([]string{"angryMonkey"}, infoLog, errorLog)
+		if err != nil {
+			errorLog.Printf("Error instantiating testclient: %v", err)
+		} else {
+			infoLog.Printf("Running test client")
+			client.RunClient()
+		}
 	}
 
 	//Block main thread from completing until the correct signal is received
