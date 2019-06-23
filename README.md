@@ -13,23 +13,24 @@ JSON response:
 
 - `/hash/{ID}` responds to the caller with the ID number if it has been less than 5 seconds since the hash was initiated.  If more than 5 seconds have passed, the endpoint will respond with the SHA512 hashed password encoded in Base64.
 
-Request:  curl -v localhost:8080/hash/2
+Request:  `curl -v localhost:8080/hash/2`
 Response with less than 5 seconds elapsed time since /hash was called:
-2
+`2`
 
 Response with 5 seconds or more of elapsed time since /has was called:
-ZEHhWB65gUlzdVwtDQArEyx+KVLzp/aTaRaPlBzYRIFj6vjFdqEb0Q5B8zVKCZ0vKbZPZklJz0Fd7su2A+gf7Q==
+`ZEHhWB65gUlzdVwtDQArEyx+KVLzp/aTaRaPlBzYRIFj6vjFdqEb0Q5B8zVKCZ0vKbZPZklJz0Fd7su2A+gf7Q==`
 
-- /stats takes no parameters and responds in JSON format with an object containing the total number of *successful* hash requests and the average response time of those requests.  Average is measured in microseconds.
+- `/stats` takes no parameters and responds in JSON format with an object containing the total number of *successful* hash requests and the average response time of those requests.  Average is measured in microseconds.
 
-Request:  curl localhost:8080/stats
-Response: {"total":2,"average":73}
-
-- /shutdown initiates a graceful shutdown of the server.  This includes blocking the processing of any subsequent calls to the other endpoints, and a 5-second grace period for all endpoints to finish responding.
-
-Request: curl localhost:8080/shutdown
+Request:  `curl localhost:8080/stats`
 Response:
-Shutting service down
+`{"total":2,"average":73}`
+
+- `/shutdown` initiates a graceful shutdown of the server.  This includes blocking the processing of any subsequent calls to the other endpoints, and a 5-second grace period for all endpoints to finish responding.
+
+Request: `curl localhost:8080/shutdown`
+Response:
+`Shutting service down`
 
 # Additional packages
 Two additional packages were written to support the processing that takes place in the server
