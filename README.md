@@ -5,7 +5,6 @@ The jumpcloud repository is a simple API server over HTTP that provides SHA512 p
 Form request: `curl -v --data "password=angryMonkey" -X POST localhost:8080/hash`
 Form Response:
 `1`
-  
 JSON request: `curl --data '{"password":"angryMonkey"}' -H "Content-type: application/json" localhost:8080/hash`
 JSON response:
 `{"password":"angryMonkey","id":1}`
@@ -16,7 +15,6 @@ JSON response:
 Request:  `curl -v localhost:8080/hash/2`
 Response with less than 5 seconds elapsed time since /hash was called:
 `2`
-
 Response with 5 seconds or more of elapsed time since /has was called:
 `ZEHhWB65gUlzdVwtDQArEyx+KVLzp/aTaRaPlBzYRIFj6vjFdqEb0Q5B8zVKCZ0vKbZPZklJz0Fd7su2A+gf7Q==`
 
