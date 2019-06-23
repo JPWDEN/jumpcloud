@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -36,12 +37,20 @@ type ServerType struct {
 	Average float64
 	//shutdown (unexported) holds the shutdown status of the service
 	shutdown bool
+	//Below logs provide info- and error-specific logging within the service
+	infoLog  *log.Logger
+	errorLog *log.Logger
 }
 
 //NewServer is a constructor that initializes a server object of type ServerType
-func NewServer() *ServerType {
+func NewServer(infoLog *log.Logger, errorLog *log.Logger) *ServerType {
 	newMap := make(map[int]types.IDData)
-	return &ServerType{IDMap: newMap, shutdown: false}
+	return &ServerType{
+		IDMap:    newMap,
+		shutdown: false,
+		infoLog:  infoLog,
+		errorLog: errorLog,
+	}
 }
 
 func encodeBody(resp http.ResponseWriter, req *http.Request, data interface{}) error {
@@ -92,7 +101,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 	}
 	//pathArgs := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
 	//m, _ := url.ParseQuery(req.URL.RawQuery)
-	//fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
+	//svr.infoLog.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 	var passwd types.HashData
 
 	//If JSON header exists, process for JSON.  If not, parse form data.
@@ -153,13 +162,13 @@ func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request
 	}
 	pathArgs := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
 	//m, _ := url.ParseQuery(req.URL.RawQuery)
-	//fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
+	//svr.infoLog.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 
 	switch req.Method {
 	case "GET":
 		id, err := strconv.Atoi(pathArgs[1])
 		if err != nil {
-			fmt.Printf("Error: %v\n", err)
+			svr.errorLog.Printf("Error in request: %v\n", err)
 			return
 		}
 		svr.mux.RLock()
@@ -193,7 +202,7 @@ func (svr *ServerType) GetAPIStats(resp http.ResponseWriter, req *http.Request) 
 	}
 	//pathArgs := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
 	//m, _ := url.ParseQuery(req.URL.RawQuery)
-	//fmt.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
+	//svr.infoLog.Printf("Path args: %+v, raw %s, m %+v\n", pathArgs, req.URL.RawQuery, m)
 	switch req.Method {
 	case "GET":
 		svr.mux.RLock()
