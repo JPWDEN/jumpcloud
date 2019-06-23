@@ -53,7 +53,10 @@ Jumpcloud has a minimal Docker configuration and can be run in a container.
 `docker-compose up` will build and run the container.
 `docker-compose up -d` will run the container in the background.
 
-Once the container is up and running, the application can be used exactly the same as the stand-alone method above, pointing to localhost:8080.
+Once the container is up and running, the application can be used exactly the same as the stand-alone method above, pointing to localhost:8080.<br><br>
+
+# Other Notes
+1. This project was written on a VM running Ubuntu 18.04.  Due to nuances in functionality with Docker, Go, and cURL, some modifications may be necessary to produce identical results on Windows platforms.<br>
 
 
 # Appreciation
