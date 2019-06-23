@@ -1,7 +1,6 @@
 # jumpcloud
 The jumpcloud repository is a simple API server over HTTP that provides SHA512 password hashing for the caller, statistics on number of hash calls and average response time, and a graceful shutdown mechanism.  The implementation is thread/concurrency-safe, and while it was not requested, the repository also has a basic Dockerfile and docker-compose.yaml, making it suitable for integration into a Kubernetes cluster.  The following endpoints can be found in the service package:
 - `/hash` accepts a plaintext password and responds to the caller with a unique ID number for their hash.  Directions for this assessment called for password data to be sent as a Form.  As such, this endpoint processes that type of data.  Additionally, this endpoint includes a proof of concept for processing JSON data, and therefore can process both:  Form data receives generic response data in return, while JSON requests will receive JSON responses with both ID as well as plaintext password.  JSON requests *must* be accompanied by a “Content-type: application/json” header.
-
 Form request: `curl -v --data "password=angryMonkey" -X POST localhost:8080/hash` <br>
 Form Response:
 `1`<br>
