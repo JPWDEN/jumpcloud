@@ -34,7 +34,7 @@ func NewClient(passwords []string, infoLog *log.Logger, errorLog *log.Logger) *C
 func (client *ClientType) runHashPassword(useJSON bool) {
 	route := "http://localhost:8080/hash"
 	if useJSON {
-		payload := types.HashData{Password: "angryMonkey"}
+		payload := types.HashData{Password: client.passwordList[0]}
 		byteMap, err := json.Marshal(payload)
 		if err != nil {
 			client.errorLog.Printf("HashPassword Error: %v", err)
@@ -50,7 +50,7 @@ func (client *ClientType) runHashPassword(useJSON bool) {
 		client.infoLog.Printf("HashPassword result: %+v\n", result)
 	} else {
 		payload := url.Values{}
-		payload.Set("password", "angryMonkey")
+		payload.Set("password", client.passwordList[0])
 		resp, err := http.PostForm(route, payload)
 		if err != nil {
 			client.errorLog.Printf("HashPassword Error: %v", err)
