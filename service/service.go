@@ -33,8 +33,8 @@ type ServerType struct {
 	Head int
 	//IDMap holds time access and password data for each ID
 	IDMap map[int]types.IDData
-	//Average is a running average (in ms) of the time required to process all incoming hash requests
-	Average float64
+	//Average is a running average (in us) of the time required to process all incoming hash requests
+	Average int64
 	//shutdown (unexported) holds the shutdown status of the service
 	shutdown bool
 	//Below logs provide info- and error-specific logging within the service
@@ -140,7 +140,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		hashedPW := hashAndEncrypt(passwd.Password)
 		svr.IDMap[svr.Head] = types.IDData{Password: hashedPW, FirstCall: time.Now()}
 		elapsed := time.Since(now)
-		svr.Average = ((svr.Average + float64(elapsed.Nanoseconds())) / float64(svr.Head))
+		svr.Average = ((svr.Average + elapsed.Nanoseconds()) / int64(svr.Head))
 		svr.infoLog.Printf("Response return for HashPassword: %v", types.HashData{Password: passwd.Password, ID: svr.Head})
 		return
 	default:
@@ -215,7 +215,7 @@ func (svr *ServerType) GetAPIStats(resp http.ResponseWriter, req *http.Request) 
 	switch req.Method {
 	case "GET":
 		svr.mux.RLock()
-		stats := types.StatsData{Total: svr.Head, Average: svr.Average / 1000000.0}
+		stats := types.StatsData{Total: svr.Head, Average: svr.Average / 1000}
 		svr.mux.RUnlock()
 		respond(resp, req, http.StatusOK, &stats)
 		svr.infoLog.Printf("Response return for GetAPIStats: %+v", stats)

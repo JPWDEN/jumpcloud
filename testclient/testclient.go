@@ -30,7 +30,7 @@ func NewClient(passwords []string, infoLog *log.Logger, errorLog *log.Logger) *C
 
 //Run the HashPassword service function with test data
 //Form:  curl -v --data "password=angryMonkey" -X POST localhost:8080/hash
-//JSON:  curl -v --data '{"password":"angryMonkey"}' -X POST localhost:8080/hash
+//JSON:  curl --data '{"password":"angryMonkey"}' -H "Content-type: application/json" localhost:8080/hash
 func (client *ClientType) runHashPassword(useJSON bool) {
 	route := "http://localhost:8080/hash"
 	if useJSON {
@@ -102,6 +102,7 @@ func (client *ClientType) runGetAPIStats() {
 }
 
 //Run the Shutdown service function to test its affect on the service and other calls
+//curl -v localhost:8080/shutdown
 func (client *ClientType) runShutdown() {
 	route := "http://localhost:8080/shutdown"
 	req, err := http.NewRequest("GET", route, nil)
