@@ -126,14 +126,15 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		}
 	}
 
+	var safeHead int
 	switch req.Method {
 	case "POST":
 		svr.mux.Lock()
 		svr.Head++
-		svr.IDMap[svr.Head] = types.IDData{Password: passwd.Password, FirstCall: now}
-		sendHead := svr.Head
+		safeHead = svr.Head
+		svr.IDMap[safeHead] = types.IDData{Password: passwd.Password, FirstCall: now}
 		elapsed := time.Since(now)
-		svr.Average = ((svr.Average + elapsed.Nanoseconds()) / int64(svr.Head))
+		svr.Average = ((svr.Average + elapsed.Nanoseconds()) / int64(safeHead))
 		svr.mux.Unlock()
 
 		//Wait for 5 seconds before calculating hash
@@ -141,17 +142,17 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 			time.Sleep(time.Second * 5)
 			hashedPW := hashAndEncode(passwd.Password)
 			svr.mux.Lock()
-			svr.IDMap[sendHead] = types.IDData{Password: hashedPW, FirstCall: now}
+			svr.IDMap[safeHead] = types.IDData{Password: hashedPW, FirstCall: now}
 			svr.mux.Unlock()
 		}()
 
 		//Meanwhile, write out the ID to an http response after incrementing head position above
 		if useJSON {
-			respond(resp, req, http.StatusOK, &types.HashData{Password: passwd.Password, ID: sendHead})
+			respond(resp, req, http.StatusOK, &types.HashData{Password: passwd.Password, ID: safeHead})
 		} else {
-			resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(sendHead))))
+			resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(safeHead))))
 		}
-		svr.infoLog.Printf("Response return for HashPassword: %v", types.HashData{Password: passwd.Password, ID: sendHead})
+		svr.infoLog.Printf("Response return for HashPassword: %v", types.HashData{Password: passwd.Password, ID: safeHead})
 		return
 	default:
 		if useJSON {
@@ -159,7 +160,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		} else {
 			resp.Write([]byte(fmt.Sprintf("Bad request: No POST\n")))
 		}
-		svr.errorLog.Printf("Error in HashPassword: %v", types.HashData{Password: passwd.Password, ID: svr.Head})
+		svr.errorLog.Printf("Error in HashPassword: %v", types.HashData{Password: passwd.Password, ID: safeHead})
 		return
 	}
 }
