@@ -129,19 +129,29 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 	switch req.Method {
 	case "POST":
 		svr.mux.Lock()
-		defer svr.mux.Unlock()
 		svr.Head++
-		//Write out the ID to an http response after incrementing head position
-		if useJSON {
-			respond(resp, req, http.StatusOK, &types.HashData{Password: passwd.Password, ID: svr.Head})
-		} else {
-			resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(svr.Head))))
-		}
-		hashedPW := hashAndEncode(passwd.Password)
-		svr.IDMap[svr.Head] = types.IDData{Password: hashedPW, FirstCall: time.Now()}
+		svr.IDMap[svr.Head] = types.IDData{Password: passwd.Password, FirstCall: now}
+		sendHead := svr.Head
 		elapsed := time.Since(now)
 		svr.Average = ((svr.Average + elapsed.Nanoseconds()) / int64(svr.Head))
-		svr.infoLog.Printf("Response return for HashPassword: %v", types.HashData{Password: passwd.Password, ID: svr.Head})
+		svr.mux.Unlock()
+
+		//Wait for 5 seconds before calculating hash
+		go func() {
+			time.Sleep(time.Second * 5)
+			hashedPW := hashAndEncode(passwd.Password)
+			svr.mux.Lock()
+			svr.IDMap[sendHead] = types.IDData{Password: hashedPW, FirstCall: now}
+			svr.mux.Unlock()
+		}()
+
+		//Meanwhile, write out the ID to an http response after incrementing head position above
+		if useJSON {
+			respond(resp, req, http.StatusOK, &types.HashData{Password: passwd.Password, ID: sendHead})
+		} else {
+			resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(sendHead))))
+		}
+		svr.infoLog.Printf("Response return for HashPassword: %v", types.HashData{Password: passwd.Password, ID: sendHead})
 		return
 	default:
 		if useJSON {
