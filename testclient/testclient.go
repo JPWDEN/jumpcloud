@@ -21,12 +21,15 @@ type ClientType struct {
 }
 
 //NewClient is the constructor for the testclient object
-func NewClient(passwords []string, infoLog *log.Logger, errorLog *log.Logger) *ClientType {
+func NewClient(passwords []string, infoLog *log.Logger, errorLog *log.Logger) (*ClientType, error) {
+	if len(passwords) < 1 {
+		return nil, fmt.Errorf("No passwords received")
+	}
 	return &ClientType{
 		passwordList: passwords,
 		infoLog:      infoLog,
 		errorLog:     errorLog,
-	}
+	}, nil
 }
 
 //Run the HashPassword service function with test data

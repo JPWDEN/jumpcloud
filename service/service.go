@@ -33,7 +33,7 @@ type ServerType struct {
 	Head int
 	//IDMap holds time access and password data for each ID
 	IDMap map[int]types.IDData
-	//Average is a running average (in us) of the time required to process all incoming hash requests
+	//Average is a running average (purposely stored here in nanoseconds) of time required to process all incoming hash requests
 	Average int64
 	//shutdown (unexported) holds the shutdown status of the service
 	shutdown bool
@@ -79,8 +79,8 @@ func respondHTTPErr(resp http.ResponseWriter, req *http.Request, status int) {
 	respondErr(resp, req, status, http.StatusText(status))
 }
 
-//HashAndEncrypt performs a SHA512 hash on password, encodes to Base64, and returns the result
-func hashAndEncrypt(password string) string {
+//HashAndEncode performs a SHA512 hash on password, encodes to Base64, and returns the result
+func hashAndEncode(password string) string {
 	hash512 := sha512.New()
 	hash512.Write([]byte(password))
 	encoded := base64.StdEncoding.EncodeToString(hash512.Sum(nil))
@@ -120,28 +120,39 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		if ok {
 			passwd.Password = value[0]
 		} else {
-			resp.Write([]byte(fmt.Sprintf("Bad request:  No password\n")))
-			svr.errorLog.Printf("Error in HashPassword: No password")
+			resp.Write([]byte(fmt.Sprintf("Bad request:  No password.  Use \"password=<value>\"\n")))
+			svr.errorLog.Printf("Error in HashPassword: No password.  Use \"password=<value>\"")
 			return
 		}
 	}
 
+	var safeHead int
 	switch req.Method {
 	case "POST":
 		svr.mux.Lock()
-		defer svr.mux.Unlock()
 		svr.Head++
-		//Write out the ID to an http response after incrementing head position
-		if useJSON {
-			respond(resp, req, http.StatusOK, &types.HashData{Password: passwd.Password, ID: svr.Head})
-		} else {
-			resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(svr.Head))))
-		}
-		hashedPW := hashAndEncrypt(passwd.Password)
-		svr.IDMap[svr.Head] = types.IDData{Password: hashedPW, FirstCall: time.Now()}
+		safeHead = svr.Head
+		svr.IDMap[safeHead] = types.IDData{Password: passwd.Password, FirstCall: now}
 		elapsed := time.Since(now)
-		svr.Average = ((svr.Average + elapsed.Nanoseconds()) / int64(svr.Head))
-		svr.infoLog.Printf("Response return for HashPassword: %v", types.HashData{Password: passwd.Password, ID: svr.Head})
+		svr.Average = ((svr.Average + elapsed.Nanoseconds()) / int64(safeHead))
+		svr.mux.Unlock()
+
+		//Wait for 5 seconds before calculating hash
+		go func() {
+			time.Sleep(time.Second * 5)
+			hashedPW := hashAndEncode(passwd.Password)
+			svr.mux.Lock()
+			svr.IDMap[safeHead] = types.IDData{Password: hashedPW, FirstCall: now}
+			svr.mux.Unlock()
+		}()
+
+		//Meanwhile, write out the ID to an http response after incrementing head position above
+		if useJSON {
+			respond(resp, req, http.StatusOK, &types.HashData{Password: passwd.Password, ID: safeHead})
+		} else {
+			resp.Write([]byte(fmt.Sprintf("%s\n", strconv.Itoa(safeHead))))
+		}
+		svr.infoLog.Printf("Response return for HashPassword: %v", types.HashData{Password: passwd.Password, ID: safeHead})
 		return
 	default:
 		if useJSON {
@@ -149,7 +160,7 @@ func (svr *ServerType) HashPassword(resp http.ResponseWriter, req *http.Request)
 		} else {
 			resp.Write([]byte(fmt.Sprintf("Bad request: No POST\n")))
 		}
-		svr.errorLog.Printf("Error in HashPassword: %v", types.HashData{Password: passwd.Password, ID: svr.Head})
+		svr.errorLog.Printf("Error in HashPassword: %v", types.HashData{Password: passwd.Password, ID: safeHead})
 		return
 	}
 }
@@ -188,6 +199,8 @@ func (svr *ServerType) CheckPassword(resp http.ResponseWriter, req *http.Request
 			} else {
 				respString = fmt.Sprintf("%s\n", value.Password)
 			}
+		} else {
+			respString = fmt.Sprintf("Bad Request:  ID %d not found\n", id)
 		}
 		resp.Write([]byte(respString))
 		svr.infoLog.Printf("Response return for CheckPassword: %s", respString)
